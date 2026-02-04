@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>⛏️ Saboteur Leaderboard</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=MedievalSharp&family=Poppins:wght@400;600;700&display=swap');
+
+.score-cell{position:relative;cursor:help;}
+.tooltip{
+  position:absolute;
+  bottom:120%;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(0,0,0,0.85);
+  color:#fff;
+  padding:10px 12px;
+  border-radius:10px;
+  font-size:0.8rem;
+  white-space:pre-line;
+  width:240px;
+  display:none;
+  z-index:100;
+}
+.score-cell:hover .tooltip{display:block;}
+
+:root{
+  --bg1:#3e2723; --bg2:#5d4037; --bg3:#8d6e63; --bg4:#212121;
+  --text:#fffbe6; --glass:rgba(255,255,255,0.15);
+  --gold:#ffd700; --silver:#c0c0c0; --bronze:#cd7f32;
+}
+
+body.dark-mode{
+  --bg1:#1b1b1b; --bg2:#2c2c2c; --bg3:#3e3e3e; --bg4:#000000;
+  --glass:rgba(0,0,0,0.45);
+}
+
+body{
+  margin:0;
+  font-family:'Poppins',sans-serif;
+  color:var(--text);
+  background:linear-gradient(-45deg,var(--bg1),var(--bg2),var(--bg3),var(--bg4));
+  background-size:400% 400%;
+  animation:gradientShift 20s ease infinite;
+}
+
+@keyframes gradientShift{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+
+h1{
+  text-align:center;
+  margin:45px 0 10px;
+  font-family:'MedievalSharp',cursive;
+  font-size:3rem;
+  cursor:pointer;
+}
+
+.controls{text-align:center;margin-bottom:15px;}
+
+button{
+  background:rgba(0,0,0,0.35);
+  color:#fff;
+  border:1px solid rgba(255,255,255,0.3);
+  padding:8px 14px;
+  border-radius:20px;
+  cursor:pointer;
+  margin:4px;
+}
+
+.leaderboard{
+  width:92%;
+  max-width:950px;
+  margin:auto;
+  background:var(--glass);
+  border-radius:22px;
+  backdrop-filter:blur(14px);
+  overflow:hidden;
+}
+
+table{width:100%;border-collapse:collapse;}
+th,td{padding:16px;text-align:center;vertical-align:top;}
+thead{background:rgba(255,255,255,0.25);}
+
+tr{transition:0.3s ease;}
+tr:hover{background:rgba(255,255,255,0.15);}
+
+.rank-1 td{color:var(--gold);font-weight:700}
+.rank-2 td{color:var(--silver)}
+.rank-3 td{color:var(--bronze)}
+
+footer{text-align:center;margin:25px;opacity:0.85;font-size:0.9rem;}
+
+#formulaBtn{
+  position:fixed;
+  bottom:20px;
+  right:20px;
+  width:54px;
+  height:54px;
+  border-radius:50%;
+  font-size:22px;
+}
+
+#formulaPanel{
+  position:fixed;
+  bottom:90px;
+  right:20px;
+  width:340px;
+  background:var(--glass);
+  backdrop-filter:blur(16px);
+  border-radius:18px;
+  padding:18px;
+  display:none;
+  text-align:left;
+  z-index:10;
+}
+
+#formulaPanel code{
+  display:block;
+  background:rgba(0,0,0,0.35);
+  padding:12px;
+  border-radius:10px;
+  margin:10px 0;
+  font-size:0.85rem;
+  white-space:pre-line;
+}
+
+small.muted{opacity:0.8}
+small.rivalry{display:block;margin-top:6px;font-size:0.75rem;opacity:0.9;}
+</style>
+</head>
+
+<body class="dark-mode">
+
+<h1 id="title">⛏️ Saboteur Leaderboard</h1>
+
+<div class="controls">
+  <button id="themeBtn">🌙</button>
+</div>
+
+<div class="leaderboard">
+<table>
+<thead>
+<tr>
+  <th>Rank</th>
+  <th>Player</th>
+  <th>Score</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+</div>
+
+<footer>
+  <div id="lore"></div>
+  <div id="funFact"></div>
+  <div>Last updated: <span id="time"></span></div>
+</footer>
+
+<button id="formulaBtn">📘</button>
+
+<div id="formulaPanel">
+  <h3>🧮 How scoring works</h3>
+  <code>
+Game Score = R1 + R2 + R3 + Gold
+
+Leaderboard Score = Sum of your BEST 3 games
+  </code>
+  <small class="muted">⛏️ Only your top 3 performances count.</small>
+</div>
+
+<script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS3I0a4JhGI4fPs82EWRpcWMiDrQ1dqeDlzC5xQ3KP9hQTCneU1d4EBpvmrFGibztVx3mtdm7k7juq0/pub?output=csv";
+
+const facts=[
+"💰 Gold makes friends. Sabotage makes enemies.",
+"😈 Trust no one in the cave.",
+"⛏️ One tunnel, many betrayals.",
+"🎭 Everyone looks innocent until round 3.",
+"👀 Someone is definitely lying."
+];
+
+async function load(){
+  const res=await fetch(CSV_URL+"&t="+Date.now());
+  const txt=(await res.text()).replace(/^\uFEFF/,"");
+  const lines=txt.trim().split("\n");
+
+  const delimiter =
+    lines[0].includes(",") ? "," :
+    lines[0].includes(";") ? ";" :
+    "\t";
+
+  const h=lines[0].split(delimiter).map(x=>x.trim());
+  const i=k=>h.indexOf(k);
+  const num=v=>Number(v)||0;
+
+  const rows = lines.slice(1).map(r=>{
+    const c=r.split(delimiter);
+    return {
+      game: c[i("game_id")],
+      name: c[i("name")],
+      r1: num(c[i("r1")]),
+      r2: num(c[i("r2")]),
+      r3: num(c[i("r3")]),
+      gold: num(c[i("gold")]),
+      total: num(c[i("total")])
+    };
+  });
+
+  const byPlayer={};
+  rows.forEach(r=>{
+    byPlayer[r.name] ??= [];
+    byPlayer[r.name].push(r);
+  });
+
+  const players = Object.entries(byPlayer).map(([name,games])=>{
+    games.sort((a,b)=>b.total-a.total);
+    const top = games.slice(0,3);
+
+    return {
+      name,
+      top,
+      score: top.reduce((sum,g)=>sum+g.total,0)
+    };
+  }).sort((a,b)=>b.score-a.score);
+
+  const tbody=document.getElementById("tbody");
+  tbody.innerHTML="";
+
+  players.forEach((p,i)=>{
+    const breakdown = p.top.map(g =>
+      `Game ${g.game}
+R1: ${g.r1}
+R2: ${g.r2}
+R3: ${g.r3}
+Gold: ${g.gold}
+Total: ${g.total}`
+    ).join("\n\n");
+
+    let rivalry="";
+    const above=players[i-1];
+    const below=players[i+1];
+    if(above && Math.abs(p.score-above.score)<=3)
+      rivalry=`<small class="rivalry">😬 ${above.score-p.score} behind ${above.name}</small>`;
+    if(below && Math.abs(p.score-below.score)<=3)
+      rivalry=`<small class="rivalry">🔥 ${p.score-below.score} ahead of ${below.name}</small>`;
+
+    const tr=document.createElement("tr");
+    tr.className=`rank-${i+1}`;
+    tr.innerHTML=`
+      <td>${i+1}${rivalry}</td>
+      <td>${p.name}</td>
+      <td class="score-cell">
+        ${p.score}
+        <div class="tooltip">${breakdown}</div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById("funFact").textContent =
+    facts[Math.floor(Math.random()*facts.length)];
+  document.getElementById("lore").textContent =
+    `⛏️ ${players[0]?.name || "Someone"} is the richest miner in the cave.`;
+  document.getElementById("time").textContent=new Date().toLocaleString();
+}
+
+document.getElementById("themeBtn").onclick=()=>document.body.classList.toggle("dark-mode");
+document.getElementById("formulaBtn").onclick=()=>{
+  const p=document.getElementById("formulaPanel");
+  p.style.display=p.style.display==="block"?"none":"block";
+};
+
+let clicks=0;
+document.getElementById("title").onclick=()=>{
+  if(++clicks===3)
+    alert("😈 House rules may change without notice.");
+};
+
+load();
+setInterval(load,30000);
+</script>
+
+</body>
+</html>
