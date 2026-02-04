@@ -21,6 +21,7 @@ body{
   background:linear-gradient(-45deg,var(--bg1),var(--bg2),var(--bg3),var(--bg4));
   background-size:400% 400%;
   animation:gradientShift 20s ease infinite;
+  cursor: url('https://cdn-icons-png.flaticon.com/32/809/809957.png'), auto;
 }
 
 @keyframes gradientShift{
@@ -66,7 +67,7 @@ h1{
   background:var(--glass);
   border-radius:22px;
   backdrop-filter:blur(14px);
-  overflow:hidden;
+  overflow:visible;
   box-shadow:0 0 25px rgba(255,140,0,0.2);
   position:relative;
   z-index:2;
@@ -79,7 +80,7 @@ thead{background:rgba(255,255,255,0.1);}
 .rank-2 td{color:var(--silver)}
 .rank-3 td{color:var(--bronze)}
 
-.score-cell{position:relative;cursor:help;}
+.score-cell{position:relative;cursor:help;z-index: 5;}
 .tooltip{
   position:absolute;
   bottom:120%;
@@ -92,7 +93,8 @@ thead{background:rgba(255,255,255,0.1);}
   white-space:pre-line;
   width:260px;
   display:none;
-  z-index:10;
+  z-index:9999;
+  pointer-events: none;
 }
 .tooltip.below{top:120%;bottom:auto;}
 .score-cell:hover .tooltip{display:block;}
