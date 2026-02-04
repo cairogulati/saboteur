@@ -155,13 +155,28 @@ async function load(){
   const res=await fetch(CSV_URL+"&t="+Date.now());
   const txt=await res.text();
   const lines=txt.trim().split("\n");
-  const h=lines[0].split(",");
-  const i=k=>h.indexOf(k);
-  const num=v=>Number(v)||0;
+  const delimiter =
+  lines[0].includes(",") ? "," :
+  lines[0].includes("\t") ? "\t" :
+  lines[0].includes(";") ? ";" :
+  ",";
+  const h = lines[0].split(delimiter).map(x => x.trim().toLowerCase());
+  const i = k => h.indexOf(k.toLowerCase());
+  const num = v => Number(String(v).trim()) || 0;
 
   const rows=lines.slice(1).map(r=>{
     const c=r.split(",");
-    return {game:c[i("game_id")],name:c[i("name")],r1:num(c[i("r1")]),r2:num(c[i("r2")]),r3:num(c[i("r3")]),gold:num(c[i("gold")]),total:num(c[i("total")])};
+    const r1 = num(c[i("r1")]);
+const r2 = num(c[i("r2")]);
+const r3 = num(c[i("r3")]);
+const gold = num(c[i("gold")]);
+
+return {
+  game:c[i("game_id")],
+  name:c[i("name")],
+  r1,r2,r3,gold,
+  total: r1 + r2 + r3 + gold   // 💥 calculated here
+};
   });
 
   const byPlayer={};
